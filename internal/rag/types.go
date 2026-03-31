@@ -29,8 +29,3 @@ type RawNews struct {
 	Sentiment string `json:"sentiment"`
 	Date      string `json:"date"`
 }
-
-type GroundTruth struct {
-	Ticker   string `json:"ticker"`
-	Expected string `json:"expected"`
-}

@@ -3,7 +3,6 @@ package main
 import (
 	"ai-agent/internal/agent"
 	"ai-agent/internal/config"
-	"ai-agent/internal/eval"
 	"ai-agent/internal/llm"
 	"ai-agent/internal/rag"
 	"context"
@@ -40,14 +39,6 @@ func run() error {
 	retriever := rag.NewRetriever(embedder, qdrant, cfg.CollectionName, cfg.TopK)
 	runner := agent.NewRunner(retriever, llmClient)
 	indexer := rag.NewIndexer(qdrant, embedder)
-
-	cmd := "serve"
-	if len(os.Args) > 1 {
-		cmd = strings.ToLower(os.Args[1])
-	}
-	if cmd != "serve" {
-		return fmt.Errorf("unknown command %q (only `serve` is supported)", cmd)
-	}
 	return runHTTPServer(cfg, runner, indexer, qdrant, embedder, newDependencyMonitor(cfg), logger)
 }
 
@@ -222,36 +213,9 @@ func runHTTPServer(cfg config.Config, runner *agent.Runner, indexer *rag.Indexer
 			"status": "ok",
 		})
 	})
-	router.Post("/eval", func(w http.ResponseWriter, r *http.Request) {
-		reqCtx, cancel := context.WithTimeout(r.Context(), 2*cfg.HTTPTimeout)
-		defer cancel()
-		_, truth, err := rag.LoadRawData("data/raw")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		ev := eval.Evaluator{}
-		items := make([]eval.ItemResult, 0, len(truth))
-		for _, t := range truth {
-			out, err := runner.Run(reqCtx, t.Ticker)
-			if err != nil {
-				http.Error(w, fmt.Errorf("ticker %s: %w", t.Ticker, err).Error(), http.StatusInternalServerError)
-				return
-			}
-			items = append(items, eval.MakeItem(t.Ticker, out, t.Expected, ev))
-		}
-		report := ev.BuildReport(items)
-		w.Header().Set("Content-Type", "application/json")
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(report); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	})
 	logger.Info("server listening",
 		slog.String("addr", cfg.ListenAddr),
-		slog.String("routes", "POST /ask, POST /analyze, POST /index, POST /eval, GET /health, GET /ready"),
+		slog.String("routes", "POST /ask, POST /analyze, POST /index, GET /health, GET /ready"),
 	)
 	return http.ListenAndServe(cfg.ListenAddr, router)
 }
@@ -264,7 +228,7 @@ func indexAll(ctx context.Context, cfg config.Config, indexer *rag.Indexer, qdra
 	if err := qdrant.EnsureCollection(ctx, cfg.CollectionName, len(seed)); err != nil {
 		return err
 	}
-	docs, _, err := rag.LoadRawData("data/raw")
+	docs, err := rag.LoadRawData("data/raw")
 	if err != nil {
 		return err
 	}

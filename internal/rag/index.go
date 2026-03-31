@@ -20,12 +20,12 @@ func NewIndexer(qdrant *QdrantClient, embed *Embedder) *Indexer {
 	return &Indexer{qdrant: qdrant, embed: embed}
 }
 
-func LoadRawData(rawDir string) ([]FactDocument, []GroundTruth, error) {
+func LoadRawData(rawDir string) ([]FactDocument, error) {
 	var docs []FactDocument
 
 	var profiles []RawProfile
 	if err := readJSON(filepath.Join(rawDir, "profiles.json"), &profiles); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, p := range profiles {
 		docs = append(docs, FactDocument{
@@ -46,7 +46,7 @@ func LoadRawData(rawDir string) ([]FactDocument, []GroundTruth, error) {
 
 	var financials []RawFinancial
 	if err := readJSON(filepath.Join(rawDir, "financials.json"), &financials); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, f := range financials {
 		docs = append(docs,
@@ -73,7 +73,7 @@ func LoadRawData(rawDir string) ([]FactDocument, []GroundTruth, error) {
 
 	var news []RawNews
 	if err := readJSON(filepath.Join(rawDir, "news.json"), &news); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, n := range news {
 		datePart := ""
@@ -88,12 +88,7 @@ func LoadRawData(rawDir string) ([]FactDocument, []GroundTruth, error) {
 		})
 	}
 
-	var truth []GroundTruth
-	if err := readJSON(filepath.Join(rawDir, "ground_truth.json"), &truth); err != nil {
-		return nil, nil, err
-	}
-
-	return docs, truth, nil
+	return docs, nil
 }
 
 func (i *Indexer) IndexDocuments(ctx context.Context, collection string, docs []FactDocument) error {

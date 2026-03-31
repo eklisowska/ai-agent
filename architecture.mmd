@@ -1,29 +1,29 @@
-%% ReAct: Retrieve → Act → Reason → Reflect (see agentic_workflow_react.md).
-%% Requirements 1–4: README “Requirements Coverage (Agentic Components)” — data prep, RAG, reasoning & reflection, tools.
+%% AI Stock Analyst Agent — high-level HTTP and data flow.
+%% Companion docs: README.md (quick start, env, layout), agentic_workflow_react.md (ReAct steps).
+%% Requirements map (README): (1) data prep (2) RAG (3) reasoning & reflection (4) tools.
 flowchart TD
-    U[User / reviewer]
-    API[Go API]
+    U[User / client]
+    API[Go HTTP server]
 
-    subgraph idx["1–2 · Prep & RAG index — POST /index"]
-        RAW[(Synthetic JSON)]
-        PREP[Fact documents]
-        Q[(Qdrant)]
+    subgraph idx["Indexing — POST /index"]
+        RAW["data/raw: profiles · financials · news"]
+        PREP[Normalize to fact documents]
+        Q[(Qdrant collection)]
         RAW --> PREP --> Q
     end
 
-    subgraph react["ReAct — POST /analyze · /ask"]
-        RET[Retrieve]
-        ACT[Act — tools]
-        REASON[Reason]
-        REFLECT[Reflect]
+    subgraph react["ReAct — POST /analyze or POST /ask"]
+        RET[Retrieve top-k by ticker]
+        ACT[Act — tool signals]
+        REASON[Reason — LLM pass 1]
+        REFLECT[Reflect — LLM pass 2 + policy]
         RET --> ACT --> REASON --> REFLECT
     end
 
-    OUT[RunResult JSON]
+    OUT["JSON: RunResult"]
 
     U --> API
     API -->|POST /index| PREP
     Q --> RET
     REFLECT --> OUT
-
-    API -->|POST /analyze /ask| RET
+    API -->|POST /analyze · /ask| RET

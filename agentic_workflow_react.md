@@ -1,16 +1,17 @@
-# Agentic Workflow (ReAct)
+# Agentic workflow (ReAct)
 
 ## Objective
 
-Demonstrate a self-reflective agentic system that combines retrieval, reasoning, action execution, and evaluation into one workflow that returns `BUY`, `HOLD`, or `SELL`.
+Demonstrate a self-reflective agentic system that combines **retrieval**, deterministic **tools (Act)**, LLM **reasoning**, and **reflection** into one workflow that returns `BUY`, `HOLD`, or `SELL`.
 
-## ReAct Loop in This Project
+There is **no separate batch-evaluation HTTP route**; quality checks live in unit tests and manual review of `RunResult` JSON.
 
-1. **Retrieve**: fetch ticker-scoped facts from vector search (RAG).
-2. **Act**: compute deterministic signals (sentiment, risk, P/E assessment).
-3. **Reason**: generate a structured decision with the LLM (pass 1).
-4. **Reflect**: self-check and optionally revise with the LLM (pass 2).
-5. **Evaluate**: score predictions against labeled ground truth.
+## ReAct loop in this project
+
+1. **Retrieve** — Ticker-scoped facts from vector search (Qdrant).
+2. **Act** — Deterministic signals: sentiment score, risk keywords, P/E band (`internal/agent/tools.go`).
+3. **Reason** — First LLM pass: structured JSON (`decision`, `reasoning`, `confidence`).
+4. **Reflect** — Second LLM pass + policy (`ChooseFinal` in `internal/agent/reflection.go`) to accept or revise.
 
 ## Flow
 
@@ -18,44 +19,31 @@ Demonstrate a self-reflective agentic system that combines retrieval, reasoning,
 
 **Files:** `cmd/server/main.go`, `internal/config/config.go`
 
-- Load env config, initialize Qdrant + embedding + LLM clients, wire retriever/indexer/runner.
-- Expose API routes: `/index`, `/analyze`, `/ask`, `/eval`, `/health`, `/ready`.
+- Load configuration from the environment (optional `.env` or `ENV_FILE`).
+- Construct Qdrant client, embedder, LLM client, retriever, indexer, and `agent.Runner`.
+- Register routes: `POST /index`, `POST /analyze`, `POST /ask`, `GET /health`, `GET /ready`.
 
-### 1) Prepare and Index Context
+### 1) Prepare and index context
 
 **Files:** `internal/rag/index.go`, `internal/rag/embed.go`, `internal/rag/qdrant.go`, `data/raw/*.json`
 
-- Normalize raw synthetic data into fact documents.
-- Embed each fact with Ollama embeddings.
-- Upsert vectors and payloads into the Qdrant collection.
+- Read `profiles.json`, `financials.json`, `news.json` and build `FactDocument` records.
+- Embed each fact and upsert into the configured Qdrant collection (`POST /index`).
 
-### 2) Run Analysis (`/analyze` or `/ask`)
+### 2) Run analysis
 
 **Files:** `internal/agent/flow.go`, `internal/rag/retrieve.go`, `internal/agent/tools.go`, `internal/llm/client.go`, `internal/agent/reflection.go`
 
-- Retrieve top-k facts filtered by ticker.
-- Run tools:
-  - `SentimentScore(...)`
-  - `DetectRisk(...)`
-  - `AnalyzePE(...)`
-- Build prompt and generate initial JSON output (`decision`, `reasoning`, `confidence`).
-- Run reflection prompt and choose the final answer via policy (`ChooseFinal`).
+- **`/analyze`** — Default query text for embedding/prompts (ticker-only flow).
+- **`/ask`** — User question drives embedding and prompt framing.
+- Retrieve top-k chunks filtered by ticker; run tools; build prompts; parse LLM JSON; run reflection; apply guardrails where applicable.
 
-### 3) Return Auditable Output
+### 3) Return auditable output
 
 **Files:** `internal/agent/types.go`
 
-- API returns full `RunResult` including retrieved docs, tool summary, initial result, reflected result, final selection, and reflection rationale.
+- Response is `RunResult`: retrieved snippets, tool summary, initial and reflected model outputs, final choice, and reflection rationale.
 
-### 4) Evaluate System (`/eval`)
+## Diagram
 
-**Files:** `cmd/server/main.go`, `internal/eval/evaluator.go`, `data/raw/ground_truth.json`
-
-- Run end-to-end analysis for each labeled ticker.
-- Use existing indexed data (no re-indexing inside `/eval`).
-- Report:
-  - accuracy
-  - average reasoning quality
-  - confidence calibration (`low` / `mid` / `high`)
-  - per-ticker results
-
+See [`architecture.mmd`](./architecture.mmd) for a compact Mermaid flowchart (index path vs ReAct path).

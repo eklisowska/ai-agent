@@ -90,8 +90,15 @@ func DetectRisk(text string) []string {
 		}
 	}
 	if len(risks) == 0 {
-		if riskWordRe.MatchString(low) {
-			risks = append(risks, "unspecified risk")
+		for _, line := range strings.Split(text, "\n") {
+			l := strings.ToLower(strings.TrimSpace(line))
+			if l == "" || strings.Contains(l, "key risk:") {
+				continue
+			}
+			if riskWordRe.MatchString(l) {
+				risks = append(risks, "unspecified risk")
+				break
+			}
 		}
 	}
 	return risks
@@ -113,6 +120,7 @@ func RunToolSummary(retrievedDocs []string) ToolSummary {
 	var merged string
 	var pe float64 = 25
 	var revenueGrowth float64
+	var hasRevenue bool
 	var debtToEquity float64
 
 	for _, doc := range retrievedDocs {
@@ -122,9 +130,17 @@ func RunToolSummary(retrievedDocs []string) ToolSummary {
 			headlines = append(headlines, doc)
 		}
 		var ticker string
-		_, _ = fmt.Sscanf(doc, "%s PE ratio is %f", &ticker, &pe)
-		_, _ = fmt.Sscanf(doc, "%s revenue growth is %f%%", &ticker, &revenueGrowth)
-		_, _ = fmt.Sscanf(doc, "%s debt-to-equity ratio is %f", &ticker, &debtToEquity)
+		var v float64
+		if n, _ := fmt.Sscanf(doc, "%s PE ratio is %f", &ticker, &v); n == 2 {
+			pe = v
+		}
+		if n, _ := fmt.Sscanf(doc, "%s revenue growth is %f%%", &ticker, &v); n == 2 {
+			revenueGrowth = v
+			hasRevenue = true
+		}
+		if n, _ := fmt.Sscanf(doc, "%s debt-to-equity ratio is %f", &ticker, &v); n == 2 {
+			debtToEquity = v
+		}
 	}
 	risks := DetectRisk(merged)
 	sentiment := SentimentScore(headlines)
@@ -136,22 +152,32 @@ func RunToolSummary(retrievedDocs []string) ToolSummary {
 		composite += 0.5
 	case "overvalued":
 		// High revenue growth partially offsets a rich multiple (growth names).
-		if revenueGrowth >= 10 {
+		switch {
+		case !hasRevenue:
+			// Revenue line missing from retrieval — do not assume worst-case multiple damage.
+			composite -= 0.28
+		case revenueGrowth >= 10:
 			composite -= 0.22
-		} else {
+		default:
 			composite -= 0.4
 		}
 	}
 	switch {
+	case !hasRevenue:
+		// Missing revenue fact (e.g. not in top-K) — do not treat as 0% growth.
 	case revenueGrowth >= 15:
 		composite += 0.8
 	case revenueGrowth >= 10:
-		// Strong double-digit growth (e.g. AMZN) should compete with rich multiples.
-		composite += 0.63
+		// Double-digit growth offsets multiples but stays below NVDA-style BUY guardrail.
+		composite += 0.42
 	case revenueGrowth >= 8:
 		composite += 0.4
 	case revenueGrowth < 0:
 		composite -= 0.8
+	}
+	// Mature high-multiple names with ~10–15% growth: not the same conviction as hyper-growth (NVDA).
+	if peAssessment == "overvalued" && hasRevenue && revenueGrowth >= 10 && revenueGrowth < 15 {
+		composite -= 0.52
 	}
 	switch {
 	case debtToEquity > 1.5:
@@ -162,7 +188,8 @@ func RunToolSummary(retrievedDocs []string) ToolSummary {
 		composite += 0.2
 	}
 	composite += sentiment * 0.8
-	composite -= math.Min(float64(len(risks))*0.2, 1.0)
+	// Cap total risk penalty so mixed headlines + keyword overlap do not always force SELL.
+	composite -= math.Min(float64(len(risks))*0.12, 0.42)
 	composite = clamp(composite, -2, 2)
 
 	return ToolSummary{

@@ -121,7 +121,7 @@ Use the context to address the query above, then give a BUY, HOLD, or SELL recom
 If the context is empty or does not contain ticker-specific facts, respond that there is no data for the ticker instead of inferring.
 Prefer this policy unless context strongly contradicts it:
 - composite_score >= 0.7 -> BUY
-- composite_score <= -0.7 -> SELL
+- composite_score <= -0.9 -> SELL
 - otherwise -> HOLD
 
 Return ONLY valid JSON:
@@ -161,8 +161,9 @@ Return ONLY valid JSON:
 
 func applyPolicyGuardrail(in model.AnalysisOutput, tools ToolSummary) (model.AnalysisOutput, bool) {
 	// Must match thresholds in buildReasoningPrompt (composite_score policy).
+	// Sell threshold is stricter than buy so mixed/risk-heavy names stay in HOLD unless very bearish.
 	const strongBuy = 0.7
-	const strongSell = -0.7
+	const strongSell = -0.9
 	switch {
 	case tools.CompositeScore >= strongBuy && in.Decision != model.DecisionBuy:
 		in.Decision = model.DecisionBuy

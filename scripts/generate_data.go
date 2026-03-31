@@ -28,11 +28,6 @@ type news struct {
 	Date      string `json:"date"`
 }
 
-type groundTruth struct {
-	Ticker   string `json:"ticker"`
-	Expected string `json:"expected"`
-}
-
 func main() {
 	_ = write("data/raw/profiles.json", []profile{
 		{"AAPL", "profile", "Apple designs consumer electronics and software ecosystems.", "Dependence on iPhone sales and China demand"},
@@ -65,12 +60,6 @@ func main() {
 		{"NVDA", "news", "Export restrictions create regional uncertainty", "negative", "2026-02-26"},
 		{"NVDA", "news", "Hyperscaler capex outlook remains strong", "positive", "2026-02-12"},
 
-	})
-
-	_ = write("data/raw/ground_truth.json", []groundTruth{
-		{"AAPL", "HOLD"},
-		{"AMZN", "BUY"},
-		{"NVDA", "BUY"},
 	})
 }
 

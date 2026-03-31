@@ -1,23 +1,58 @@
-# Synthetic Stock Analyst Agent
+# AI Stock Analyst Agent
 
-This is a **Go backend API** that demonstrates an **agentic stock analyst** on synthetic data. Given a ticker (like `AAPL`), it returns `BUY`, `HOLD`, or `SELL` using:
+This is a **Go backend API** that demonstrates an **agentic stock analyst** on synthetic data. Given a ticker that exists in the indexed dataset (the bundled data covers **`AAPL`**, **`AMZN`**, and **`NVDA`** only), it returns `BUY`, `HOLD`, or `SELL` using:
 
-- Retrieval-augmented context from synthetic financial/news/profile data
-- Lightweight tool-calling for sentiment/risk/valuation signals
+- Retrieval-augmented context from synthetic financial, news, and profile data
+- Lightweight tool-calling for sentiment, risk, and valuation signals
 - A reflection pass that can revise the first answer
-- Simple evaluation against labeled ground truth
 
-## How It Was Built
+## How it is built
 
-- **Language/runtime:** Go 1.26
-- **HTTP API:** `chi` router (`/index`, `/analyze`, `/ask`, `/eval`, `/health`, `/ready`)
-- **LLM + embeddings:** Ollama (`llama3`, `nomic-embed-text`)
-- **Vector store:** Qdrant
-- **Data source:** `data/raw/*.json` synthetic dataset
+| Area | Choice |
+|------|--------|
+| Language | Go 1.26 |
+| HTTP | `chi` — `POST /index`, `POST /analyze`, `POST /ask`, `GET /health`, `GET /ready` |
+| LLM & embeddings | Ollama (`llama3`, `nomic-embed-text`) |
+| Vector store | Qdrant |
+| Process model | Single binary: starts the HTTP server directly (no CLI subcommands) |
 
-See `architecture.mmd` for architecture and run flow.
+**Data:** JSON under `data/raw/` — `profiles.json`, `financials.json`, and `news.json` — are normalized into fact documents, embedded, and indexed in Qdrant.
 
-## Quick Start (Docker-first)
+**Diagrams:** See [`architecture.mmd`](./architecture.mmd) for the high-level flow (Mermaid). Preview it in VS Code with a Mermaid extension, in GitHub if your viewer supports `.mmd`, or paste into [mermaid.live](https://mermaid.live).
+
+**Narrative walkthrough:** [`agentic_workflow_react.md`](./agentic_workflow_react.md) describes the ReAct-style loop (retrieve → act → reason → reflect).
+
+## Configuration (environment)
+
+Loaded at startup (`internal/config`). Optional `.env` in the working directory, or set `ENV_FILE` to a specific path.
+
+| Variable | Role | Default |
+|----------|------|---------|
+| `QDRANT_URL` | Qdrant HTTP API | `http://localhost:6333` |
+| `OLLAMA_URL` | Ollama API | `http://localhost:11434` |
+| `LLM_MODEL` | Chat model name | `llama3` |
+| `EMBED_MODEL` | Embedding model name | `nomic-embed-text` |
+| `QDRANT_COLLECTION` | Collection name | `stock_facts` |
+| `TOP_K` | Retrieved chunks per query | `8` |
+| `HTTP_TIMEOUT` | Client timeouts (Go duration, e.g. `30s`, `600s`) | `30s` |
+| `LISTEN_ADDR` | Bind address | `:8080` |
+
+`docker-compose.yml` sets these for the `agent` service (Ollama is expected on the host, reachable via `host.docker.internal`).
+
+## Repository layout
+
+| Path | Purpose |
+|------|---------|
+| `cmd/server/` | HTTP server entrypoint |
+| `internal/agent/` | Run loop, tools, reflection, `RunResult` types |
+| `internal/rag/` | Load raw JSON, embed, Qdrant index & retrieve |
+| `internal/llm/` | Ollama chat + JSON analysis parsing |
+| `internal/model/` | Structured analysis output (`decision`, `reasoning`, …) |
+| `internal/config/` | Environment-based configuration |
+| `data/raw/` | Source JSON for indexing |
+| `scripts/generate_data.go` | Optional helper to regenerate synthetic `data/raw/*.json` |
+
+## Quick start (Docker-first)
 
 1. Start Ollama on your host:
 
@@ -25,36 +60,37 @@ See `architecture.mmd` for architecture and run flow.
 ollama serve
 ```
 
-1. Pull Ollama models on your host:
+2. Pull models:
 
 ```bash
 ollama pull llama3
 ollama pull nomic-embed-text
 ```
 
-1. Start the stack (Qdrant + API container; Ollama runs on host):
+3. Start Qdrant and the API (Ollama stays on the host; see `extra_hosts` in `docker-compose.yml`):
 
 ```bash
 docker compose up -d --build
 ```
 
-1. Check health:
+4. Check liveness:
 
 ```bash
 curl -s http://localhost:8080/health
 ```
 
-1. Index data:
+5. Index documents (required before analysis):
 
 ```bash
 curl -s -X POST http://localhost:8080/index
 ```
 
-1. Call the API:
-  - Use `POST /analyze` for a default recommendation (input: `ticker`).
-  - Use `POST /ask` for question-driven analysis (input: `ticker` + `question`).
-  - Shortcut: if you have a specific question, use `/ask`; otherwise use `/analyze`.
-   `/analyze` example:
+6. Call the API:
+
+   - **`POST /analyze`** — default recommendation; JSON body: `{ "ticker": "AAPL" }` (use a ticker present in `data/raw/`).
+   - **`POST /ask`** — question-driven analysis; JSON body: `{ "ticker": "AAPL", "question": "…" }`.
+
+   Example — `/analyze`:
 
 ```bash
 curl -s -X POST http://localhost:8080/analyze \
@@ -62,7 +98,7 @@ curl -s -X POST http://localhost:8080/analyze \
   -d '{"ticker":"AAPL"}'
 ```
 
-`/ask` examples (specific, question-driven):
+   Examples — `/ask`:
 
 ```bash
 curl -s -X POST http://localhost:8080/ask \
@@ -70,15 +106,11 @@ curl -s -X POST http://localhost:8080/ask \
   -d '{"ticker":"AAPL","question":"Is valuation stretched vs peers?"}'
 ```
 
-Question about downside risk:
-
 ```bash
 curl -s -X POST http://localhost:8080/ask \
   -H 'Content-Type: application/json' \
-  -d '{"ticker":"TSLA","question":"What is the biggest downside risk over the next 2 quarters?"}'
+  -d '{"ticker":"AMZN","question":"What is the biggest downside risk over the next 2 quarters?"}'
 ```
-
-Question about conflicting signals:
 
 ```bash
 curl -s -X POST http://localhost:8080/ask \
@@ -86,36 +118,27 @@ curl -s -X POST http://localhost:8080/ask \
   -d '{"ticker":"NVDA","question":"Revenue growth is strong but sentiment is mixed. Should I still rate it BUY?"}'
 ```
 
-Question requesting a conservative view:
-
 ```bash
 curl -s -X POST http://localhost:8080/ask \
   -H 'Content-Type: application/json' \
-  -d '{"ticker":"MSFT","question":"Give a conservative recommendation focused on risk control."}'
+  -d '{"ticker":"AMZN","question":"Give a conservative recommendation focused on risk control."}'
 ```
 
-1. Run end-to-end evaluation over labeled tickers and report accuracy, reasoning-quality score, and confidence calibration buckets.
+**Readiness:** `GET /ready` reports dependency checks (Qdrant + Ollama) for orchestration and load balancers.
+
+## Local run (without Docker)
+
+With Qdrant and Ollama running locally and env vars set (or defaults), from the repo root:
 
 ```bash
-curl -s -X POST http://localhost:8080/eval
+go run ./cmd/server
 ```
 
-## ReAct Workflow Documentation
+Then `POST /index` and use `/analyze` or `/ask` as above.
 
-For a concise end-to-end breakdown of the agent loop, see:
+## Requirements coverage (agentic components)
 
-- `[agentic_workflow_react.md](./agentic_workflow_react.md)`
-
-## Requirements Coverage (Agentic Components)
-
-1. **Data Preparation & Contextualization**
-  Raw JSON files (`profiles`, `financials`, `news`) are transformed into normalized fact documents and ticker-scoped context.
-2. **RAG Pipeline Design**
-  Facts are embedded with Ollama embeddings and indexed in Qdrant; retrieval uses query embedding + ticker filter + top-k search.
-3. **Reasoning & Reflection**
-  The agent first generates a structured analysis, then runs a second reflection prompt to self-check and optionally replace the initial answer.
-4. **Tool-Calling Mechanisms**
-  Deterministic tools compute sentiment score, risk keyword detection, and P/E valuation class; outputs are passed into prompts.
-5. **Evaluation**
-  `/eval` runs end-to-end over labeled tickers and reports accuracy, reasoning-quality score, and confidence calibration buckets.
-
+1. **Data preparation & contextualization** — Raw JSON (`profiles`, `financials`, `news`) is turned into normalized fact documents and ticker-scoped text for retrieval.
+2. **RAG pipeline** — Facts are embedded with Ollama, stored in Qdrant; retrieval uses query embedding, ticker filter, and top-k search.
+3. **Reasoning & reflection** — The agent produces structured output, then a second reflection pass may revise the answer (`ChooseFinal`).
+4. **Tool-calling** — Deterministic helpers compute sentiment score, risk keywords, and P/E band; results are injected into prompts.

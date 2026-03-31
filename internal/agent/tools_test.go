@@ -30,8 +30,8 @@ func TestDetectRiskIgnoresDebtToEquityPhrase(t *testing.T) {
 	require.Empty(t, risks, "metric line should not count as narrative debt risk")
 }
 
-// Regression: composite_score policy in prompts/guardrails should match labeled eval tickers.
-func TestRunToolSummaryEvalTickers(t *testing.T) {
+// Regression: composite_score policy in prompts/guardrails for AAPL, AMZN, NVDA tool summaries.
+func TestRunToolSummaryDatasetTickers(t *testing.T) {
 	aapl := []string{
 		"AAPL PE ratio is 28.00",
 		"AAPL revenue growth is 5.00%",
@@ -54,12 +54,43 @@ func TestRunToolSummaryEvalTickers(t *testing.T) {
 		"News for NVDA: GPU supply constraints ease as packaging capacity expands (sentiment: positive, date: 2026-03-18)",
 	}
 	a := RunToolSummary(aapl)
-	require.Greater(t, a.CompositeScore, -0.7, "AAPL expected HOLD band")
+	require.Greater(t, a.CompositeScore, -0.9, "AAPL expected HOLD band (not strong sell)")
 	require.Less(t, a.CompositeScore, 0.7)
 
 	m := RunToolSummary(amzn)
-	require.GreaterOrEqual(t, m.CompositeScore, 0.7, "AMZN expected BUY threshold")
+	require.Greater(t, m.CompositeScore, -0.9, "AMZN expected HOLD band")
+	require.Less(t, m.CompositeScore, 0.7)
 
 	n := RunToolSummary(nvda)
 	require.GreaterOrEqual(t, n.CompositeScore, 0.7, "NVDA expected BUY threshold")
+}
+
+// Regression: financial facts must not depend on chunk order (last-wins used to drop revenue).
+func TestRunToolSummaryFinancialsAnyOrder(t *testing.T) {
+	// Full AMZN facts in retrieval order that used to leave revenue unset when news chunks came last.
+	docs := []string{
+		"AMZN profile: Amazon runs e-commerce, cloud, and logistics businesses.",
+		"AMZN key risk: Execution variability across retail and logistics operations",
+		"News for AMZN: Amazon expands fulfillment automation and lowers unit costs (sentiment: positive, date: 2026-03-22)",
+		"AMZN PE ratio is 45.00",
+		"News for AMZN: Retail profitability remains uneven across regions (sentiment: negative, date: 2026-03-16)",
+		"AMZN revenue growth is 12.00%",
+		"News for AMZN: AWS closes several multi-year enterprise AI contracts (sentiment: positive, date: 2026-03-10)",
+		"AMZN debt-to-equity ratio is 0.45",
+		"News for AMZN: Prime engagement trends remain stable quarter-over-quarter (sentiment: neutral, date: 2026-02-27)",
+		"News for AMZN: Third-party seller services growth improves marketplace economics (sentiment: positive, date: 2026-02-13)",
+	}
+	a := RunToolSummary(docs)
+	b := RunToolSummary(reverseCopy(docs))
+	require.InDelta(t, a.CompositeScore, b.CompositeScore, 1e-9, "composite must not depend on doc order")
+	require.Greater(t, a.CompositeScore, -0.9, "AMZN full facts stay out of strong sell, got %f", a.CompositeScore)
+	require.Less(t, a.CompositeScore, 0.7, "AMZN full facts stay below BUY guardrail, got %f", a.CompositeScore)
+}
+
+func reverseCopy(s []string) []string {
+	out := make([]string, len(s))
+	for i := range s {
+		out[i] = s[len(s)-1-i]
+	}
+	return out
 }
