@@ -85,9 +85,7 @@ func RunToolSummary(retrievedDocs []string) ToolSummary {
 			headlines = append(headlines, doc)
 		}
 		var ticker string
-		if _, err := fmt.Sscanf(doc, "%s PE ratio is %f", &ticker, &pe); err == nil {
-			// Parsed PE ratio from a canonical financial fact string.
-		}
+		_, _ = fmt.Sscanf(doc, "%s PE ratio is %f", &ticker, &pe)
 	}
 
 	return ToolSummary{

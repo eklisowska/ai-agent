@@ -1,6 +1,7 @@
 # Synthetic Stock Analyst Agent
 
-Agentic AI demo in Go that analyzes a stock ticker and returns `BUY`, `HOLD`, or `SELL` using:
+This is a **Go backend API** that demonstrates an **agentic stock analyst** on synthetic data. Given a ticker (like `AAPL`), it returns `BUY`, `HOLD`, or `SELL` using:
+
 - Retrieval-augmented context from synthetic financial/news/profile data
 - Lightweight tool-calling for sentiment/risk/valuation signals
 - A reflection pass that can revise the first answer
@@ -16,38 +17,60 @@ Agentic AI demo in Go that analyzes a stock ticker and returns `BUY`, `HOLD`, or
 
 See `architecture.mmd` for architecture and run flow.
 
+## ReAct Workflow Documentation
+
+For a concise end-to-end breakdown of the agent loop, see:
+
+- [`agentic_worklow_react.md`](./agentic_worklow_react.md)
+
+That document explains how this project implements a cohesive ReAct-style system across:
+- retrieval (RAG indexing + search),
+- action execution (deterministic tools),
+- reasoning (LLM initial pass),
+- self-reflection (LLM revision pass),
+- and evaluation (accuracy, reasoning quality, confidence calibration).
+
 ## Quick Start (Docker-first)
 
-1) Pull Ollama models on your host:
+1. Pull Ollama models on your host:
 
 ```bash
 ollama pull llama3
 ollama pull nomic-embed-text
 ```
 
-2) Start the stack (Qdrant + API container; Ollama remains on host):
+1. Start the stack (Qdrant + API container; Ollama remains on host):
 
 ```bash
 docker compose up -d --build
 ```
 
-3) Check health/readiness:
+1. Check health/readiness:
 
 ```bash
 curl -s http://localhost:8080/health
 curl -s http://localhost:8080/ready
 ```
 
-4) Index data and run:
+1. Index data and run API calls:
 
 ```bash
 curl -s -X POST http://localhost:8080/index
+```
+
+```bash
 curl -s -X POST http://localhost:8080/analyze \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL"}'
+```
+
+```bash
 curl -s -X POST http://localhost:8080/ask \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL","question":"Is valuation stretched vs peers?"}'
+```
+
+```bash
 curl -s -X POST http://localhost:8080/eval
 ```
 
@@ -59,17 +82,14 @@ docker compose down
 
 ## Requirements Coverage (Agentic Components)
 
-1. **Data Preparation & Contextualization**  
-   Raw JSON files (`profiles`, `financials`, `news`) are transformed into normalized fact documents and ticker-scoped context.
+1. **Data Preparation & Contextualization**
+  Raw JSON files (`profiles`, `financials`, `news`) are transformed into normalized fact documents and ticker-scoped context.
+2. **RAG Pipeline Design**
+  Facts are embedded with Ollama embeddings and indexed in Qdrant; retrieval uses query embedding + ticker filter + top-k search.
+3. **Reasoning & Reflection**
+  The agent first generates a structured analysis, then runs a second reflection prompt to self-check and optionally replace the initial answer.
+4. **Tool-Calling Mechanisms**
+  Deterministic tools compute sentiment score, risk keyword detection, and P/E valuation class; outputs are injected into prompts.
+5. **Evaluation**
+  `/eval` runs end-to-end over labeled tickers and reports accuracy, reasoning-quality score, and confidence calibration buckets.
 
-2. **RAG Pipeline Design**  
-   Facts are embedded with Ollama embeddings and indexed in Qdrant; retrieval uses query embedding + ticker filter + top-k search.
-
-3. **Reasoning & Reflection**  
-   The agent first generates a structured analysis, then runs a second reflection prompt to self-check and optionally replace the initial answer.
-
-4. **Tool-Calling Mechanisms**  
-   Deterministic tools compute sentiment score, risk keyword detection, and P/E valuation class; outputs are injected into prompts.
-
-5. **Evaluation**  
-   `/eval` runs end-to-end over labeled tickers and reports accuracy, reasoning-quality score, and confidence calibration buckets.
