@@ -4,6 +4,8 @@ import (
 	"ai-agent/internal/model"
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type fakeRetriever struct{}
@@ -42,15 +44,9 @@ func TestRunnerRun(t *testing.T) {
 		llm:       llm,
 	}
 	out, err := r.Run(context.Background(), "AAPL")
-	if err != nil {
-		t.Fatalf("Run error: %v", err)
-	}
-	if out.Final.Decision == "" {
-		t.Fatalf("expected final decision")
-	}
-	if llm.call != 2 {
-		t.Fatalf("expected reflection pass, calls=%d", llm.call)
-	}
+	require.NoError(t, err, "Run error")
+	require.NotEmpty(t, out.Final.Decision, "expected final decision")
+	require.Equal(t, 2, llm.call, "expected reflection pass")
 }
 
 func TestRunnerRunWithQuery(t *testing.T) {
@@ -60,13 +56,7 @@ func TestRunnerRunWithQuery(t *testing.T) {
 		llm:       llm,
 	}
 	out, err := r.RunWithQuery(context.Background(), "AAPL", "What is the main risk for this name?")
-	if err != nil {
-		t.Fatalf("RunWithQuery error: %v", err)
-	}
-	if out.Query != "What is the main risk for this name?" {
-		t.Fatalf("unexpected query: %q", out.Query)
-	}
-	if llm.call != 2 {
-		t.Fatalf("expected reflection pass, calls=%d", llm.call)
-	}
+	require.NoError(t, err, "RunWithQuery error")
+	require.Equal(t, "What is the main risk for this name?", out.Query, "unexpected query")
+	require.Equal(t, 2, llm.call, "expected reflection pass")
 }

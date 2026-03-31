@@ -10,9 +10,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
@@ -27,6 +33,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	qdrant := rag.NewQdrantClient(cfg.QdrantURL, cfg.HTTPTimeout)
 	embedder := rag.NewEmbedder(cfg.OllamaURL, cfg.EmbedModel, cfg.HTTPTimeout)
@@ -35,20 +42,22 @@ func run() error {
 	runner := agent.NewRunner(retriever, llmClient)
 	indexer := rag.NewIndexer(qdrant, embedder)
 
-	checkCtx, cancelCheck := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
-	defer cancelCheck()
-	if err := healthcheck(cfg, checkCtx); err != nil {
-		return err
-	}
-
 	cmd := "analyze"
 	if len(os.Args) > 1 {
 		cmd = strings.ToLower(os.Args[1])
 	}
 
+	if cmd != "serve" {
+		checkCtx, cancelCheck := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
+		defer cancelCheck()
+		if err := healthcheck(cfg, checkCtx); err != nil {
+			return err
+		}
+	}
+
 	switch cmd {
 	case "serve":
-		return runHTTPServer(cfg, runner)
+		return runHTTPServer(cfg, runner, newDependencyMonitor(cfg), logger)
 	case "index":
 		ctx, cancel := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
 		defer cancel()
@@ -91,21 +100,104 @@ type askRequest struct {
 	Question string `json:"question"`
 }
 
-func runHTTPServer(cfg config.Config, runner *agent.Runner) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+type dependencyMonitor struct {
+	cfg       config.Config
+	mu        sync.RWMutex
+	lastErr   error
+	lastCheck time.Time
+}
+
+func newDependencyMonitor(cfg config.Config) *dependencyMonitor {
+	return &dependencyMonitor{cfg: cfg}
+}
+
+func (m *dependencyMonitor) run(ctx context.Context, interval time.Duration) {
+	m.checkOnce(ctx)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-ticker.C:
+			m.checkOnce(ctx)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}
+}
+
+func (m *dependencyMonitor) checkOnce(parent context.Context) {
+	checkCtx, cancel := context.WithTimeout(parent, 2*m.cfg.HTTPTimeout)
+	defer cancel()
+	err := healthcheck(m.cfg, checkCtx)
+
+	m.mu.Lock()
+	m.lastErr = err
+	m.lastCheck = time.Now().UTC()
+	m.mu.Unlock()
+}
+
+func (m *dependencyMonitor) snapshot() (error, time.Time) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.lastErr, m.lastCheck
+}
+
+func runHTTPServer(cfg config.Config, runner *agent.Runner, monitor *dependencyMonitor, logger *slog.Logger) error {
+	serverCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	checkInterval := cfg.HTTPTimeout
+	if checkInterval < 5*time.Second {
+		checkInterval = 5 * time.Second
+	}
+	go monitor.run(serverCtx, checkInterval)
+
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.Timeout(2 * cfg.HTTPTimeout))
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			next.ServeHTTP(w, r)
+			logger.Info("http request",
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+				slog.Duration("duration", time.Since(start)),
+			)
+		})
 	})
-	mux.HandleFunc("/ask", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"alive"}`))
+	})
+	router.Get("/ready", func(w http.ResponseWriter, r *http.Request) {
+		lastErr, checkedAt := monitor.snapshot()
+		w.Header().Set("Content-Type", "application/json")
+		if checkedAt.IsZero() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"status":"starting","ready":false}`))
 			return
 		}
+		if lastErr != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status":     "degraded",
+				"ready":      false,
+				"checked_at": checkedAt.Format(time.RFC3339),
+				"error":      lastErr.Error(),
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":     "ok",
+			"ready":      true,
+			"checked_at": checkedAt.Format(time.RFC3339),
+		})
+	})
+	router.Post("/ask", func(w http.ResponseWriter, r *http.Request) {
 		var req askRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -132,8 +224,11 @@ func runHTTPServer(cfg config.Config, runner *agent.Runner) error {
 			return
 		}
 	})
-	fmt.Fprintf(os.Stderr, "listening on %s (POST /ask, GET /health)\n", cfg.ListenAddr)
-	return http.ListenAndServe(cfg.ListenAddr, mux)
+	logger.Info("server listening",
+		slog.String("addr", cfg.ListenAddr),
+		slog.String("routes", "POST /ask, GET /health, GET /ready"),
+	)
+	return http.ListenAndServe(cfg.ListenAddr, router)
 }
 
 func indexAll(ctx context.Context, cfg config.Config, indexer *rag.Indexer, qdrant *rag.QdrantClient, embedder *rag.Embedder) error {
@@ -167,7 +262,8 @@ func runEval(ctx context.Context, cfg config.Config, indexer *rag.Indexer, qdran
 
 	ev := eval.Evaluator{}
 	items := make([]eval.ItemResult, 0, len(truth))
-	for _, t := range truth {
+	for i, t := range truth {
+		fmt.Fprintf(os.Stderr, "evaluating %s (%d/%d)\n", t.Ticker, i+1, len(truth))
 		out, err := runner.Run(ctx, t.Ticker)
 		if err != nil {
 			return fmt.Errorf("ticker %s: %w", t.Ticker, err)

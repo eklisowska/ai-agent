@@ -6,6 +6,12 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
     restart: unless-stopped
 
   agent:
@@ -14,18 +20,73 @@ services:
       dockerfile: Dockerfile
     container_name: ai-agent
     depends_on:
-      - qdrant
+      qdrant:
+        condition: service_healthy
     environment:
       QDRANT_URL: http://qdrant:6333
       OLLAMA_URL: http://host.docker.internal:11434
       LLM_MODEL: llama3
       EMBED_MODEL: nomic-embed-text
       TOP_K: "8"
+      HTTP_TIMEOUT: 600s
+      LISTEN_ADDR: 0.0.0.0:8080
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data:ro
-    command: ["analyze", "AAPL"]
+    ports:
+      - "8080:8080"
+    command: ["serve"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/ready >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  agent-index:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      OLLAMA_URL: http://host.docker.internal:11434
+      LLM_MODEL: llama3
+      EMBED_MODEL: nomic-embed-text
+      TOP_K: "8"
+      HTTP_TIMEOUT: 600s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data:ro
+    command: ["index"]
+    profiles: ["jobs"]
+    restart: "no"
+
+  agent-eval:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      OLLAMA_URL: http://host.docker.internal:11434
+      LLM_MODEL: llama3
+      EMBED_MODEL: nomic-embed-text
+      TOP_K: "8"
+      HTTP_TIMEOUT: 600s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data:ro
+    command: ["eval"]
+    profiles: ["jobs"]
     restart: "no"
 
 volumes:

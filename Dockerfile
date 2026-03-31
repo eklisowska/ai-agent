@@ -19,4 +19,4 @@ COPY data /app/data
 USER appuser
 
 ENTRYPOINT ["/app/agent"]
-CMD ["analyze", "AAPL"]
+CMD ["serve"]
