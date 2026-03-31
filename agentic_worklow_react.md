@@ -52,6 +52,7 @@ Demonstrate a robust, self-reflective agentic system that integrates retrieval, 
 **Files:** `cmd/server/main.go`, `internal/eval/evaluator.go`, `data/raw/ground_truth.json`
 
 - Run end-to-end analysis for each labeled ticker.
+- Uses existing indexed data (no reindex inside `/eval`).
 - Report:
   - accuracy
   - average reasoning quality

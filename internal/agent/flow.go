@@ -51,6 +51,25 @@ func (r *Runner) RunWithQuery(ctx context.Context, ticker, query string) (RunRes
 	if err != nil {
 		return RunResult{}, err
 	}
+	if len(docs) == 0 {
+		noData := model.AnalysisOutput{
+			Reasoning:  fmt.Sprintf("No context data found for ticker %s.", strings.ToUpper(ticker)),
+			Confidence: 0,
+		}
+		return RunResult{
+			Query:               query,
+			Ticker:              strings.ToUpper(ticker),
+			NoData:              true,
+			NoDataReason:        noData.Reasoning,
+			RetrievedDocs:       []string{},
+			ToolSummary:         ToolSummary{},
+			Initial:             noData,
+			Reflected:           noData,
+			Final:               noData,
+			ReflectionReplaced:  false,
+			ReflectionRationale: "analysis skipped: no retrieval context",
+		}, nil
+	}
 
 	tools := RunToolSummary(docs)
 	initialPrompt := buildReasoningPrompt(query, docs, tools)
@@ -66,6 +85,10 @@ func (r *Runner) RunWithQuery(ctx context.Context, ticker, query string) (RunRes
 	}
 
 	final, replaced, reason := ChooseFinal(initial, reflected)
+	final, policyApplied := applyPolicyGuardrail(final, tools)
+	if policyApplied {
+		reason = reason + "; policy guardrail applied"
+	}
 	return RunResult{
 		Query:               query,
 		Ticker:              strings.ToUpper(ticker),
@@ -95,6 +118,11 @@ Tool outputs:
 
 Task:
 Use the context to address the query above, then give a BUY, HOLD, or SELL recommendation.
+If the context is empty or does not contain ticker-specific facts, respond that there is no data for the ticker instead of inferring.
+Prefer this policy unless context strongly contradicts it:
+- composite_score >= 0.7 -> BUY
+- composite_score <= -0.7 -> SELL
+- otherwise -> HOLD
 
 Return ONLY valid JSON:
 {
@@ -121,6 +149,7 @@ Tool outputs:
 
 Check for contradictions, missing data, and weak reasoning relative to the query.
 If needed, revise the decision.
+Keep decisions consistent with tool outputs and composite_score thresholds unless there is explicit contradictory evidence.
 
 Return ONLY valid JSON:
 {
@@ -128,4 +157,31 @@ Return ONLY valid JSON:
   "reasoning": "short explanation",
   "confidence": 0.0
 }`, string(initialJSON), docsText, string(toolJSON))
+}
+
+func applyPolicyGuardrail(in model.AnalysisOutput, tools ToolSummary) (model.AnalysisOutput, bool) {
+	const strongBuy = 1.0
+	const strongSell = -1.0
+	switch {
+	case tools.CompositeScore >= strongBuy && in.Decision != model.DecisionBuy:
+		in.Decision = model.DecisionBuy
+		if in.Confidence < 0.65 {
+			in.Confidence = 0.65
+		}
+		if !strings.Contains(strings.ToLower(in.Reasoning), "composite") {
+			in.Reasoning += " Composite score and supporting signals indicate stronger upside bias."
+		}
+		return in, true
+	case tools.CompositeScore <= strongSell && in.Decision != model.DecisionSell:
+		in.Decision = model.DecisionSell
+		if in.Confidence < 0.65 {
+			in.Confidence = 0.65
+		}
+		if !strings.Contains(strings.ToLower(in.Reasoning), "composite") {
+			in.Reasoning += " Composite score and risk/sentiment balance indicate stronger downside bias."
+		}
+		return in, true
+	default:
+		return in, false
+	}
 }

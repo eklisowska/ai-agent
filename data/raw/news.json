@@ -3,30 +3,105 @@
     "ticker": "AAPL",
     "type": "news",
     "headline": "Apple faces declining demand in China",
-    "sentiment": "negative"
+    "sentiment": "negative",
+    "date": "2026-03-26"
   },
   {
-    "ticker": "MSFT",
+    "ticker": "AAPL",
     "type": "news",
-    "headline": "Microsoft cloud revenue growth beats expectations",
-    "sentiment": "positive"
+    "headline": "Apple services segment posts resilient growth",
+    "sentiment": "positive",
+    "date": "2026-03-19"
   },
   {
-    "ticker": "TSLA",
+    "ticker": "AAPL",
     "type": "news",
-    "headline": "Tesla cuts prices as EV competition increases",
-    "sentiment": "negative"
+    "headline": "iPhone upgrade cycle shows mixed momentum",
+    "sentiment": "neutral",
+    "date": "2026-03-12"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "news",
+    "headline": "Regulatory pressure on app store fees rises",
+    "sentiment": "negative",
+    "date": "2026-03-04"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "news",
+    "headline": "Apple announces supply chain efficiency gains",
+    "sentiment": "positive",
+    "date": "2026-02-21"
   },
   {
     "ticker": "AMZN",
     "type": "news",
-    "headline": "Amazon expands logistics automation to reduce costs",
-    "sentiment": "positive"
+    "headline": "Amazon expands fulfillment automation and lowers unit costs",
+    "sentiment": "positive",
+    "date": "2026-03-22"
+  },
+  {
+    "ticker": "AMZN",
+    "type": "news",
+    "headline": "Retail profitability remains uneven across regions",
+    "sentiment": "negative",
+    "date": "2026-03-16"
+  },
+  {
+    "ticker": "AMZN",
+    "type": "news",
+    "headline": "AWS closes several multi-year enterprise AI contracts",
+    "sentiment": "positive",
+    "date": "2026-03-10"
+  },
+  {
+    "ticker": "AMZN",
+    "type": "news",
+    "headline": "Prime engagement trends remain stable quarter-over-quarter",
+    "sentiment": "neutral",
+    "date": "2026-02-27"
+  },
+  {
+    "ticker": "AMZN",
+    "type": "news",
+    "headline": "Third-party seller services growth improves marketplace economics",
+    "sentiment": "positive",
+    "date": "2026-02-13"
   },
   {
     "ticker": "NVDA",
     "type": "news",
     "headline": "NVIDIA secures major AI datacenter orders",
-    "sentiment": "positive"
+    "sentiment": "positive",
+    "date": "2026-03-24"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "GPU supply constraints ease as packaging capacity expands",
+    "sentiment": "positive",
+    "date": "2026-03-18"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "New enterprise software stack expands moat",
+    "sentiment": "positive",
+    "date": "2026-03-09"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "Export restrictions create regional uncertainty",
+    "sentiment": "negative",
+    "date": "2026-02-26"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "Hyperscaler capex outlook remains strong",
+    "sentiment": "positive",
+    "date": "2026-02-12"
   }
 ]

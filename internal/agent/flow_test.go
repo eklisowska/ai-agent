@@ -17,6 +17,12 @@ func (fakeRetriever) Retrieve(context.Context, string, string) ([]string, error)
 	}, nil
 }
 
+type fakeEmptyRetriever struct{}
+
+func (fakeEmptyRetriever) Retrieve(context.Context, string, string) ([]string, error) {
+	return []string{}, nil
+}
+
 type fakeLLM struct {
 	call int
 }
@@ -59,4 +65,19 @@ func TestRunnerRunWithQuery(t *testing.T) {
 	require.NoError(t, err, "RunWithQuery error")
 	require.Equal(t, "What is the main risk for this name?", out.Query, "unexpected query")
 	require.Equal(t, 2, llm.call, "expected reflection pass")
+}
+
+func TestRunnerRunWithQueryNoData(t *testing.T) {
+	llm := &fakeLLM{}
+	r := Runner{
+		retriever: fakeEmptyRetriever{},
+		llm:       llm,
+	}
+	out, err := r.RunWithQuery(context.Background(), "XYZ", "Analyze XYZ stock and decide BUY, HOLD, or SELL")
+	require.NoError(t, err, "RunWithQuery no-data error")
+	require.True(t, out.NoData, "expected no_data to be true")
+	require.Equal(t, "XYZ", out.Ticker, "ticker should be normalized")
+	require.Empty(t, out.RetrievedDocs, "expected no retrieved docs")
+	require.Empty(t, out.Final.Decision, "expected empty decision when no data")
+	require.Zero(t, llm.call, "LLM should not be called when no data")
 }

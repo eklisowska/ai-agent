@@ -5,6 +5,8 @@ import "ai-agent/internal/model"
 type RunResult struct {
 	Query               string               `json:"query"`
 	Ticker              string               `json:"ticker"`
+	NoData              bool                 `json:"no_data"`
+	NoDataReason        string               `json:"no_data_reason,omitempty"`
 	RetrievedDocs       []string             `json:"retrieved_docs"`
 	ToolSummary         ToolSummary          `json:"tool_summary"`
 	Initial             model.AnalysisOutput `json:"initial"`
@@ -17,5 +19,7 @@ type RunResult struct {
 type ToolSummary struct {
 	SentimentScore float64  `json:"sentiment_score"`
 	Risks          []string `json:"risks"`
+	RiskCount      int      `json:"risk_count"`
 	PEAssessment   string   `json:"pe_assessment"`
+	CompositeScore float64  `json:"composite_score"`
 }

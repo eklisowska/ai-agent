@@ -76,11 +76,15 @@ func LoadRawData(rawDir string) ([]FactDocument, []GroundTruth, error) {
 		return nil, nil, err
 	}
 	for _, n := range news {
+		datePart := ""
+		if strings.TrimSpace(n.Date) != "" {
+			datePart = fmt.Sprintf(", date: %s", n.Date)
+		}
 		docs = append(docs, FactDocument{
 			ID:     makeFactID(n.Ticker, "news", n.Headline),
 			Ticker: n.Ticker,
 			Type:   "news",
-			Text:   fmt.Sprintf("News for %s: %s (sentiment: %s)", n.Ticker, n.Headline, strings.ToLower(n.Sentiment)),
+			Text:   fmt.Sprintf("News for %s: %s (sentiment: %s%s)", n.Ticker, n.Headline, strings.ToLower(n.Sentiment), datePart),
 		})
 	}
 

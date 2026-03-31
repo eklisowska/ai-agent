@@ -6,22 +6,10 @@
     "risks": "Dependence on iPhone sales and China demand"
   },
   {
-    "ticker": "MSFT",
-    "type": "profile",
-    "content": "Microsoft offers cloud, software, and enterprise platforms.",
-    "risks": "Competition in cloud pricing"
-  },
-  {
-    "ticker": "TSLA",
-    "type": "profile",
-    "content": "Tesla manufactures EVs and energy products.",
-    "risks": "Execution risk in production ramp"
-  },
-  {
     "ticker": "AMZN",
     "type": "profile",
     "content": "Amazon runs e-commerce, cloud, and logistics businesses.",
-    "risks": "Margin pressure from retail costs"
+    "risks": "Execution variability across retail and logistics operations"
   },
   {
     "ticker": "NVDA",

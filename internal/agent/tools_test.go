@@ -8,8 +8,8 @@ import (
 
 func TestSentimentScore(t *testing.T) {
 	score := SentimentScore([]string{
-		"Cloud revenue growth beats expectations",
-		"Company faces declining demand",
+		"News for MSFT: Cloud revenue growth beats expectations (sentiment: positive, date: 2026-03-10)",
+		"News for AAPL: Company faces declining demand (sentiment: negative, date: 2026-03-11)",
 	})
 	require.NotZero(t, score, "expected non-zero sentiment score")
 }

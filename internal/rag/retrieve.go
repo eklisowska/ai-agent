@@ -32,7 +32,7 @@ func (r *Retriever) Retrieve(ctx context.Context, query, ticker string) ([]strin
 		return nil, err
 	}
 	if len(docs) == 0 {
-		return []string{fmt.Sprintf("No retrieval context found for %s", strings.ToUpper(ticker))}, nil
+		return []string{}, nil
 	}
 	return docs, nil
 }

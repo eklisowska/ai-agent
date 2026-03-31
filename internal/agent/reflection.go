@@ -8,11 +8,14 @@ func ChooseFinal(initial, reflected model.AnalysisOutput) (model.AnalysisOutput,
 	}
 
 	improvedConfidence := reflected.Confidence >= initial.Confidence+0.1
+	nonDegradedConfidence := reflected.Confidence >= initial.Confidence
 	changedDecision := reflected.Decision != initial.Decision
-	longerReasoning := len(reflected.Reasoning) > len(initial.Reasoning)
+	longerReasoning := len(reflected.Reasoning) >= len(initial.Reasoning)+20
 
-	if improvedConfidence || (changedDecision && longerReasoning) {
-		return reflected, true, "reflection improved confidence/consistency"
+	// Reflective revisions should be evidence-led:
+	// either materially higher confidence, or a better-supported decision change.
+	if improvedConfidence || (changedDecision && nonDegradedConfidence && longerReasoning) {
+		return reflected, true, "reflection improved evidence/consistency"
 	}
 	return initial, false, "initial decision retained"
 }

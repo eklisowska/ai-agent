@@ -17,19 +17,6 @@ This is a **Go backend API** that demonstrates an **agentic stock analyst** on s
 
 See `architecture.mmd` for architecture and run flow.
 
-## ReAct Workflow Documentation
-
-For a concise end-to-end breakdown of the agent loop, see:
-
-- [`agentic_worklow_react.md`](./agentic_worklow_react.md)
-
-That document explains how this project implements a cohesive ReAct-style system across:
-- retrieval (RAG indexing + search),
-- action execution (deterministic tools),
-- reasoning (LLM initial pass),
-- self-reflection (LLM revision pass),
-- and evaluation (accuracy, reasoning quality, confidence calibration).
-
 ## Quick Start (Docker-first)
 
 1. Pull Ollama models on your host:
@@ -39,24 +26,30 @@ ollama pull llama3
 ollama pull nomic-embed-text
 ```
 
-1. Start the stack (Qdrant + API container; Ollama remains on host):
+2. Start the stack (Qdrant + API container; Ollama remains on host):
 
 ```bash
 docker compose up -d --build
 ```
 
-1. Check health/readiness:
+3. Check health:
 
 ```bash
 curl -s http://localhost:8080/health
-curl -s http://localhost:8080/ready
 ```
 
-1. Index data and run API calls:
+4. Index data
 
 ```bash
 curl -s -X POST http://localhost:8080/index
 ```
+
+5. Make calls to API:
+   - Use `POST /analyze` for a default quick recommendation (input: `ticker`).
+   - Use `POST /ask` for question-driven analysis (input: `ticker` + `question`).
+   - Shortcut: if you have a specific question, use `/ask`; otherwise use `/analyze`.
+
+   `/analyze` example:
 
 ```bash
 curl -s -X POST http://localhost:8080/analyze \
@@ -64,21 +57,57 @@ curl -s -X POST http://localhost:8080/analyze \
   -d '{"ticker":"AAPL"}'
 ```
 
+`/ask` examples (specific, question-driven):
+
 ```bash
 curl -s -X POST http://localhost:8080/ask \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL","question":"Is valuation stretched vs peers?"}'
 ```
 
+Question about downside risk:
+
+```bash
+curl -s -X POST http://localhost:8080/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"ticker":"TSLA","question":"What is the biggest downside risk over the next 2 quarters?"}'
+```
+
+Question about conflicting signals:
+
+```bash
+curl -s -X POST http://localhost:8080/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"ticker":"NVDA","question":"Revenue growth is strong but sentiment is mixed. Should I still rate it BUY?"}'
+```
+
+Question requesting a conservative view:
+
+```bash
+curl -s -X POST http://localhost:8080/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"ticker":"MSFT","question":"Give a conservative recommendation focused on risk control."}'
+```
+
+6. Run end-to-end evaluation over labeled tickers and report accuracy, reasoning-quality score, and confidence calibration buckets.
+
 ```bash
 curl -s -X POST http://localhost:8080/eval
 ```
 
-Stop services:
+## ReAct Workflow Documentation
 
-```bash
-docker compose down
-```
+For a concise end-to-end breakdown of the agent loop, see:
+
+- `[agentic_worklow_react.md](./agentic_worklow_react.md)`
+
+That document explains how this project implements a cohesive ReAct-style system across:
+
+- retrieval (RAG indexing + search),
+- action execution (deterministic tools),
+- reasoning (LLM initial pass),
+- self-reflection (LLM revision pass),
+- and evaluation (accuracy, reasoning quality, confidence calibration).
 
 ## Requirements Coverage (Agentic Components)
 

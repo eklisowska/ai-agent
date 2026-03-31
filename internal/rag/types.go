@@ -27,6 +27,7 @@ type RawNews struct {
 	Type      string `json:"type"`
 	Headline  string `json:"headline"`
 	Sentiment string `json:"sentiment"`
+	Date      string `json:"date"`
 }
 
 type GroundTruth struct {

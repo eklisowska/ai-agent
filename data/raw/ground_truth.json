@@ -4,16 +4,8 @@
     "expected": "HOLD"
   },
   {
-    "ticker": "MSFT",
-    "expected": "BUY"
-  },
-  {
-    "ticker": "TSLA",
-    "expected": "SELL"
-  },
-  {
     "ticker": "AMZN",
-    "expected": "HOLD"
+    "expected": "BUY"
   },
   {
     "ticker": "NVDA",

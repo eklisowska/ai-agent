@@ -230,10 +230,6 @@ func runHTTPServer(cfg config.Config, runner *agent.Runner, indexer *rag.Indexer
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := indexAll(reqCtx, cfg, indexer, qdrant, embedder); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 		ev := eval.Evaluator{}
 		items := make([]eval.ItemResult, 0, len(truth))
 		for _, t := range truth {
