@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+var (
+	newsDateRe = regexp.MustCompile(`date:\s*(\d{4}-\d{2}-\d{2})`)
+	riskWordRe = regexp.MustCompile(`\brisk\b`)
+)
+
 type Tool interface {
 	Name() string
 	Execute(input string) (string, error)
@@ -36,8 +41,7 @@ func sentimentFromNewsLine(line string) float64 {
 }
 
 func newsRecencyWeight(line string) float64 {
-	re := regexp.MustCompile(`date:\s*(\d{4}-\d{2}-\d{2})`)
-	m := re.FindStringSubmatch(strings.ToLower(line))
+	m := newsDateRe.FindStringSubmatch(strings.ToLower(line))
 	if len(m) != 2 {
 		return 1
 	}
@@ -80,7 +84,7 @@ func DetectRisk(text string) []string {
 		}
 	}
 	if len(risks) == 0 {
-		if regexp.MustCompile(`\brisk\b`).MatchString(low) {
+		if riskWordRe.MatchString(low) {
 			risks = append(risks, "unspecified risk")
 		}
 	}

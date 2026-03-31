@@ -2,14 +2,14 @@
 
 ## Objective
 
-Demonstrate a robust, self-reflective agentic system that integrates retrieval, reasoning, action execution, and evaluation into one workflow that outputs `BUY` / `HOLD` / `SELL`.
+Demonstrate a self-reflective agentic system that combines retrieval, reasoning, action execution, and evaluation into one workflow that returns `BUY`, `HOLD`, or `SELL`.
 
 ## ReAct Loop in This Project
 
 1. **Retrieve**: fetch ticker-scoped facts from vector search (RAG).
-2. **Act**: compute deterministic signals (sentiment, risk, PE assessment).
-3. **Reason**: generate structured decision with LLM (pass 1).
-4. **Reflect**: self-check and optionally revise with LLM (pass 2).
+2. **Act**: compute deterministic signals (sentiment, risk, P/E assessment).
+3. **Reason**: generate a structured decision with the LLM (pass 1).
+4. **Reflect**: self-check and optionally revise with the LLM (pass 2).
 5. **Evaluate**: score predictions against labeled ground truth.
 
 ## Flow
@@ -27,7 +27,7 @@ Demonstrate a robust, self-reflective agentic system that integrates retrieval, 
 
 - Normalize raw synthetic data into fact documents.
 - Embed each fact with Ollama embeddings.
-- Upsert vectors and payload into Qdrant collection.
+- Upsert vectors and payloads into the Qdrant collection.
 
 ### 2) Run Analysis (`/analyze` or `/ask`)
 
@@ -39,7 +39,7 @@ Demonstrate a robust, self-reflective agentic system that integrates retrieval, 
   - `DetectRisk(...)`
   - `AnalyzePE(...)`
 - Build prompt and generate initial JSON output (`decision`, `reasoning`, `confidence`).
-- Run reflection prompt and choose final answer via policy (`ChooseFinal`).
+- Run reflection prompt and choose the final answer via policy (`ChooseFinal`).
 
 ### 3) Return Auditable Output
 
@@ -52,7 +52,7 @@ Demonstrate a robust, self-reflective agentic system that integrates retrieval, 
 **Files:** `cmd/server/main.go`, `internal/eval/evaluator.go`, `data/raw/ground_truth.json`
 
 - Run end-to-end analysis for each labeled ticker.
-- Uses existing indexed data (no reindex inside `/eval`).
+- Use existing indexed data (no re-indexing inside `/eval`).
 - Report:
   - accuracy
   - average reasoning quality

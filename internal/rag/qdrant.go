@@ -124,28 +124,6 @@ func (q *QdrantClient) Search(ctx context.Context, collection, ticker string, ve
 	return out, nil
 }
 
-func (q *QdrantClient) post(ctx context.Context, url string, payload any) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := q.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		d, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("qdrant post failed: %s (%s)", resp.Status, string(d))
-	}
-	return nil
-}
-
 func (q *QdrantClient) put(ctx context.Context, url string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
