@@ -12,7 +12,7 @@ type fakeRetriever struct{}
 
 func (fakeRetriever) Retrieve(context.Context, string, string) ([]string, error) {
 	return []string{
-		"AAPL PE ratio is 28",
+		"AAPL PE ratio is 26",
 		"News for AAPL: Apple faces declining demand in China (sentiment: negative)",
 	}, nil
 }

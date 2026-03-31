@@ -33,25 +33,25 @@ func TestDetectRiskIgnoresDebtToEquityPhrase(t *testing.T) {
 // Regression: composite_score policy in prompts/guardrails for AAPL, AMZN, NVDA tool summaries.
 func TestRunToolSummaryDatasetTickers(t *testing.T) {
 	aapl := []string{
-		"AAPL PE ratio is 28.00",
-		"AAPL revenue growth is 5.00%",
-		"AAPL debt-to-equity ratio is 1.50",
-		"News for AAPL: Apple faces declining demand in China (sentiment: negative, date: 2026-03-26)",
-		"News for AAPL: Apple services segment posts resilient growth (sentiment: positive, date: 2026-03-19)",
+		"AAPL PE ratio is 26.00",
+		"AAPL revenue growth is 4.00%",
+		"AAPL debt-to-equity ratio is 1.20",
+		"News for AAPL: Apple faces declining demand in China (sentiment: negative, date: 2026-03-28)",
+		"News for AAPL: Apple services segment posts resilient growth (sentiment: positive, date: 2026-03-20)",
 	}
 	amzn := []string{
-		"AMZN PE ratio is 45.00",
-		"AMZN revenue growth is 12.00%",
-		"AMZN debt-to-equity ratio is 0.45",
-		"News for AMZN: Amazon expands fulfillment automation and lowers unit costs (sentiment: positive, date: 2026-03-22)",
-		"News for AMZN: AWS closes several multi-year enterprise AI contracts (sentiment: positive, date: 2026-03-10)",
+		"AMZN PE ratio is 42.00",
+		"AMZN revenue growth is 14.00%",
+		"AMZN debt-to-equity ratio is 0.40",
+		"News for AMZN: Amazon expands fulfillment automation and lowers unit costs (sentiment: positive, date: 2026-03-24)",
+		"News for AMZN: AWS closes several multi-year enterprise AI contracts (sentiment: positive, date: 2026-03-11)",
 	}
 	nvda := []string{
-		"NVDA PE ratio is 38.00",
-		"NVDA revenue growth is 35.00%",
-		"NVDA debt-to-equity ratio is 0.30",
-		"News for NVDA: NVIDIA secures major AI datacenter orders (sentiment: positive, date: 2026-03-24)",
-		"News for NVDA: GPU supply constraints ease as packaging capacity expands (sentiment: positive, date: 2026-03-18)",
+		"NVDA PE ratio is 40.00",
+		"NVDA revenue growth is 32.00%",
+		"NVDA debt-to-equity ratio is 0.25",
+		"News for NVDA: NVIDIA secures major AI datacenter orders (sentiment: positive, date: 2026-03-26)",
+		"News for NVDA: GPU supply constraints ease as packaging capacity expands (sentiment: positive, date: 2026-03-19)",
 	}
 	a := RunToolSummary(aapl)
 	require.Greater(t, a.CompositeScore, -0.9, "AAPL expected HOLD band (not strong sell)")
@@ -69,16 +69,16 @@ func TestRunToolSummaryDatasetTickers(t *testing.T) {
 func TestRunToolSummaryFinancialsAnyOrder(t *testing.T) {
 	// Full AMZN facts in retrieval order that used to leave revenue unset when news chunks came last.
 	docs := []string{
-		"AMZN profile: Amazon runs e-commerce, cloud, and logistics businesses.",
-		"AMZN key risk: Execution variability across retail and logistics operations",
-		"News for AMZN: Amazon expands fulfillment automation and lowers unit costs (sentiment: positive, date: 2026-03-22)",
-		"AMZN PE ratio is 45.00",
-		"News for AMZN: Retail profitability remains uneven across regions (sentiment: negative, date: 2026-03-16)",
-		"AMZN revenue growth is 12.00%",
-		"News for AMZN: AWS closes several multi-year enterprise AI contracts (sentiment: positive, date: 2026-03-10)",
-		"AMZN debt-to-equity ratio is 0.45",
-		"News for AMZN: Prime engagement trends remain stable quarter-over-quarter (sentiment: neutral, date: 2026-02-27)",
-		"News for AMZN: Third-party seller services growth improves marketplace economics (sentiment: positive, date: 2026-02-13)",
+		"AMZN profile: Amazon combines North American and international retail with AWS cloud, advertising, and logistics at global scale.",
+		"AMZN key risk: Retail margin volatility, logistics competition, and cloud pricing pressure",
+		"News for AMZN: Amazon expands fulfillment automation and lowers unit costs (sentiment: positive, date: 2026-03-24)",
+		"AMZN PE ratio is 42.00",
+		"News for AMZN: Retail profitability remains uneven across regions (sentiment: negative, date: 2026-03-17)",
+		"AMZN revenue growth is 14.00%",
+		"News for AMZN: AWS closes several multi-year enterprise AI contracts (sentiment: positive, date: 2026-03-11)",
+		"AMZN debt-to-equity ratio is 0.40",
+		"News for AMZN: Prime engagement trends remain stable quarter-over-quarter (sentiment: neutral, date: 2026-02-28)",
+		"News for AMZN: Third-party seller services growth improves marketplace economics (sentiment: positive, date: 2026-02-14)",
 	}
 	a := RunToolSummary(docs)
 	b := RunToolSummary(reverseCopy(docs))

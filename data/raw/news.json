@@ -4,14 +4,14 @@
     "type": "news",
     "headline": "Apple faces declining demand in China",
     "sentiment": "negative",
-    "date": "2026-03-26"
+    "date": "2026-03-28"
   },
   {
     "ticker": "AAPL",
     "type": "news",
     "headline": "Apple services segment posts resilient growth",
     "sentiment": "positive",
-    "date": "2026-03-19"
+    "date": "2026-03-20"
   },
   {
     "ticker": "AAPL",
@@ -25,83 +25,125 @@
     "type": "news",
     "headline": "Regulatory pressure on app store fees rises",
     "sentiment": "negative",
-    "date": "2026-03-04"
+    "date": "2026-03-05"
   },
   {
     "ticker": "AAPL",
     "type": "news",
     "headline": "Apple announces supply chain efficiency gains",
     "sentiment": "positive",
-    "date": "2026-02-21"
+    "date": "2026-02-22"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "news",
+    "headline": "Wearables and installed base drive recurring revenue upside",
+    "sentiment": "positive",
+    "date": "2026-03-25"
   },
   {
     "ticker": "AMZN",
     "type": "news",
     "headline": "Amazon expands fulfillment automation and lowers unit costs",
     "sentiment": "positive",
-    "date": "2026-03-22"
+    "date": "2026-03-24"
   },
   {
     "ticker": "AMZN",
     "type": "news",
     "headline": "Retail profitability remains uneven across regions",
     "sentiment": "negative",
-    "date": "2026-03-16"
+    "date": "2026-03-17"
   },
   {
     "ticker": "AMZN",
     "type": "news",
     "headline": "AWS closes several multi-year enterprise AI contracts",
     "sentiment": "positive",
-    "date": "2026-03-10"
+    "date": "2026-03-11"
   },
   {
     "ticker": "AMZN",
     "type": "news",
     "headline": "Prime engagement trends remain stable quarter-over-quarter",
     "sentiment": "neutral",
-    "date": "2026-02-27"
+    "date": "2026-02-28"
   },
   {
     "ticker": "AMZN",
     "type": "news",
     "headline": "Third-party seller services growth improves marketplace economics",
     "sentiment": "positive",
-    "date": "2026-02-13"
+    "date": "2026-02-14"
+  },
+  {
+    "ticker": "AMZN",
+    "type": "news",
+    "headline": "Advertising revenue mix shifts toward higher-margin streams",
+    "sentiment": "positive",
+    "date": "2026-03-27"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "NVIDIA reports record data center revenue; management raises full-year AI infrastructure outlook",
+    "sentiment": "positive",
+    "date": "2026-03-30"
   },
   {
     "ticker": "NVDA",
     "type": "news",
     "headline": "NVIDIA secures major AI datacenter orders",
     "sentiment": "positive",
-    "date": "2026-03-24"
+    "date": "2026-03-26"
   },
   {
     "ticker": "NVDA",
     "type": "news",
     "headline": "GPU supply constraints ease as packaging capacity expands",
     "sentiment": "positive",
-    "date": "2026-03-18"
+    "date": "2026-03-19"
   },
   {
     "ticker": "NVDA",
     "type": "news",
     "headline": "New enterprise software stack expands moat",
     "sentiment": "positive",
-    "date": "2026-03-09"
+    "date": "2026-03-10"
   },
   {
     "ticker": "NVDA",
     "type": "news",
     "headline": "Export restrictions create regional uncertainty",
     "sentiment": "negative",
-    "date": "2026-02-26"
+    "date": "2026-02-27"
   },
   {
     "ticker": "NVDA",
     "type": "news",
     "headline": "Hyperscaler capex outlook remains strong",
     "sentiment": "positive",
-    "date": "2026-02-12"
+    "date": "2026-02-13"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "Blackwell ramp meets early enterprise demand targets",
+    "sentiment": "positive",
+    "date": "2026-03-29"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "NVDA updates guidance: AI backlog visibility improves versus prior-quarter uncertainty",
+    "sentiment": "positive",
+    "date": "2026-03-31"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "Analysts note near-term headline mix can understate sequential data center strength",
+    "sentiment": "neutral",
+    "date": "2026-03-27"
   }
 ]

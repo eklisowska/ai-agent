@@ -27,7 +27,7 @@ func TestQdrantSearchTickerFilter(t *testing.T) {
 
 		resp := map[string]any{
 			"result": []map[string]any{
-				{"payload": map[string]any{"text": "AAPL PE ratio is 28"}},
+				{"payload": map[string]any{"text": "AAPL PE ratio is 26"}},
 			},
 		}
 		_ = json.NewEncoder(w).Encode(resp)

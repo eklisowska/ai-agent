@@ -2,19 +2,19 @@
   {
     "ticker": "AAPL",
     "type": "profile",
-    "content": "Apple designs consumer electronics and software ecosystems.",
-    "risks": "Dependence on iPhone sales and China demand"
+    "content": "Apple sells premium devices and high-margin services across iPhone, Mac, wearables, and a growing subscription stack.",
+    "risks": "Concentration in handset cycles, China demand, and ongoing app store regulation"
   },
   {
     "ticker": "AMZN",
     "type": "profile",
-    "content": "Amazon runs e-commerce, cloud, and logistics businesses.",
-    "risks": "Execution variability across retail and logistics operations"
+    "content": "Amazon combines North American and international retail with AWS cloud, advertising, and logistics at global scale.",
+    "risks": "Retail margin volatility, logistics competition, and cloud pricing pressure"
   },
   {
     "ticker": "NVDA",
     "type": "profile",
-    "content": "NVIDIA builds GPUs used in AI and gaming workloads.",
-    "risks": "Cyclic demand in semiconductors"
+    "content": "NVIDIA supplies accelerated computing for AI training, inference, data center, and gaming with CUDA ecosystem lock-in. Data center and AI software attach are the primary profit drivers; headline mixes can look noisy until you reconcile dated export chatter with current backlog and hyperscaler capex.",
+    "risks": "Semiconductor cycle swings, export rules, and hyperscaler capex sensitivity"
   }
 ]
