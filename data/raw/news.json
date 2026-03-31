@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "AAPL",
+    "type": "news",
+    "headline": "Apple faces declining demand in China",
+    "sentiment": "negative"
+  },
+  {
+    "ticker": "MSFT",
+    "type": "news",
+    "headline": "Microsoft cloud revenue growth beats expectations",
+    "sentiment": "positive"
+  },
+  {
+    "ticker": "TSLA",
+    "type": "news",
+    "headline": "Tesla cuts prices as EV competition increases",
+    "sentiment": "negative"
+  },
+  {
+    "ticker": "AMZN",
+    "type": "news",
+    "headline": "Amazon expands logistics automation to reduce costs",
+    "sentiment": "positive"
+  },
+  {
+    "ticker": "NVDA",
+    "type": "news",
+    "headline": "NVIDIA secures major AI datacenter orders",
+    "sentiment": "positive"
+  }
+]

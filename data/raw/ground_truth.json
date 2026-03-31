@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "AAPL",
+    "expected": "HOLD"
+  },
+  {
+    "ticker": "MSFT",
+    "expected": "BUY"
+  },
+  {
+    "ticker": "TSLA",
+    "expected": "SELL"
+  },
+  {
+    "ticker": "AMZN",
+    "expected": "HOLD"
+  },
+  {
+    "ticker": "NVDA",
+    "expected": "BUY"
+  }
+]

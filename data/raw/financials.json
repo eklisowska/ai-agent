@@ -1,0 +1,37 @@
+[
+  {
+    "ticker": "AAPL",
+    "type": "financial",
+    "pe_ratio": 28,
+    "revenue_growth": 0.05,
+    "debt_to_equity": 1.5
+  },
+  {
+    "ticker": "MSFT",
+    "type": "financial",
+    "pe_ratio": 33,
+    "revenue_growth": 0.11,
+    "debt_to_equity": 0.4
+  },
+  {
+    "ticker": "TSLA",
+    "type": "financial",
+    "pe_ratio": 52,
+    "revenue_growth": 0.16,
+    "debt_to_equity": 0.2
+  },
+  {
+    "ticker": "AMZN",
+    "type": "financial",
+    "pe_ratio": 45,
+    "revenue_growth": 0.10,
+    "debt_to_equity": 0.7
+  },
+  {
+    "ticker": "NVDA",
+    "type": "financial",
+    "pe_ratio": 40,
+    "revenue_growth": 0.28,
+    "debt_to_equity": 0.3
+  }
+]
