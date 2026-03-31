@@ -8,7 +8,6 @@ import (
 	"ai-agent/internal/rag"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -42,62 +41,23 @@ func run() error {
 	runner := agent.NewRunner(retriever, llmClient)
 	indexer := rag.NewIndexer(qdrant, embedder)
 
-	cmd := "analyze"
+	cmd := "serve"
 	if len(os.Args) > 1 {
 		cmd = strings.ToLower(os.Args[1])
 	}
-
 	if cmd != "serve" {
-		checkCtx, cancelCheck := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
-		defer cancelCheck()
-		if err := healthcheck(cfg, checkCtx); err != nil {
-			return err
-		}
+		return fmt.Errorf("unknown command %q (only `serve` is supported)", cmd)
 	}
-
-	switch cmd {
-	case "serve":
-		return runHTTPServer(cfg, runner, newDependencyMonitor(cfg), logger)
-	case "index":
-		ctx, cancel := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
-		defer cancel()
-		return indexAll(ctx, cfg, indexer, qdrant, embedder)
-	case "analyze":
-		if len(os.Args) < 3 {
-			return errors.New("usage: go run ./cmd/server analyze <ticker>")
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
-		defer cancel()
-		result, err := runner.Run(ctx, os.Args[2])
-		if err != nil {
-			return err
-		}
-		return writeJSON(result)
-	case "ask":
-		if len(os.Args) < 4 {
-			return errors.New(`usage: go run ./cmd/server ask <ticker> <question...>`)
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
-		defer cancel()
-		ticker := os.Args[2]
-		question := strings.Join(os.Args[3:], " ")
-		result, err := runner.RunWithQuery(ctx, ticker, question)
-		if err != nil {
-			return err
-		}
-		return writeJSON(result)
-	case "eval":
-		ctx, cancel := context.WithTimeout(context.Background(), 2*cfg.HTTPTimeout)
-		defer cancel()
-		return runEval(ctx, cfg, indexer, qdrant, embedder, runner)
-	default:
-		return fmt.Errorf("unknown command %q", cmd)
-	}
+	return runHTTPServer(cfg, runner, indexer, qdrant, embedder, newDependencyMonitor(cfg), logger)
 }
 
 type askRequest struct {
 	Ticker   string `json:"ticker"`
 	Question string `json:"question"`
+}
+
+type tickerRequest struct {
+	Ticker string `json:"ticker"`
 }
 
 type dependencyMonitor struct {
@@ -142,7 +102,7 @@ func (m *dependencyMonitor) snapshot() (error, time.Time) {
 	return m.lastErr, m.lastCheck
 }
 
-func runHTTPServer(cfg config.Config, runner *agent.Runner, monitor *dependencyMonitor, logger *slog.Logger) error {
+func runHTTPServer(cfg config.Config, runner *agent.Runner, indexer *rag.Indexer, qdrant *rag.QdrantClient, embedder *rag.Embedder, monitor *dependencyMonitor, logger *slog.Logger) error {
 	serverCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -224,9 +184,78 @@ func runHTTPServer(cfg config.Config, runner *agent.Runner, monitor *dependencyM
 			return
 		}
 	})
+	router.Post("/analyze", func(w http.ResponseWriter, r *http.Request) {
+		var req tickerRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		req.Ticker = strings.TrimSpace(req.Ticker)
+		if req.Ticker == "" {
+			http.Error(w, `body must include non-empty "ticker"`, http.StatusBadRequest)
+			return
+		}
+		reqCtx, cancel := context.WithTimeout(r.Context(), 2*cfg.HTTPTimeout)
+		defer cancel()
+		result, err := runner.Run(reqCtx, req.Ticker)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(result); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+	router.Post("/index", func(w http.ResponseWriter, r *http.Request) {
+		reqCtx, cancel := context.WithTimeout(r.Context(), 2*cfg.HTTPTimeout)
+		defer cancel()
+		if err := indexAll(reqCtx, cfg, indexer, qdrant, embedder); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "ok",
+		})
+	})
+	router.Post("/eval", func(w http.ResponseWriter, r *http.Request) {
+		reqCtx, cancel := context.WithTimeout(r.Context(), 2*cfg.HTTPTimeout)
+		defer cancel()
+		_, truth, err := rag.LoadRawData("data/raw")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := indexAll(reqCtx, cfg, indexer, qdrant, embedder); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		ev := eval.Evaluator{}
+		items := make([]eval.ItemResult, 0, len(truth))
+		for _, t := range truth {
+			out, err := runner.Run(reqCtx, t.Ticker)
+			if err != nil {
+				http.Error(w, fmt.Errorf("ticker %s: %w", t.Ticker, err).Error(), http.StatusInternalServerError)
+				return
+			}
+			items = append(items, eval.MakeItem(t.Ticker, out, t.Expected, ev))
+		}
+		report := ev.BuildReport(items)
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(report); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
 	logger.Info("server listening",
 		slog.String("addr", cfg.ListenAddr),
-		slog.String("routes", "POST /ask, GET /health, GET /ready"),
+		slog.String("routes", "POST /ask, POST /analyze, POST /index, POST /eval, GET /health, GET /ready"),
 	)
 	return http.ListenAndServe(cfg.ListenAddr, router)
 }
@@ -248,30 +277,6 @@ func indexAll(ctx context.Context, cfg config.Config, indexer *rag.Indexer, qdra
 	}
 	fmt.Printf("indexed %d documents\n", len(docs))
 	return nil
-}
-
-func runEval(ctx context.Context, cfg config.Config, indexer *rag.Indexer, qdrant *rag.QdrantClient, embedder *rag.Embedder, runner *agent.Runner) error {
-	if err := indexAll(ctx, cfg, indexer, qdrant, embedder); err != nil {
-		return err
-	}
-
-	_, truth, err := rag.LoadRawData("data/raw")
-	if err != nil {
-		return err
-	}
-
-	ev := eval.Evaluator{}
-	items := make([]eval.ItemResult, 0, len(truth))
-	for i, t := range truth {
-		fmt.Fprintf(os.Stderr, "evaluating %s (%d/%d)\n", t.Ticker, i+1, len(truth))
-		out, err := runner.Run(ctx, t.Ticker)
-		if err != nil {
-			return fmt.Errorf("ticker %s: %w", t.Ticker, err)
-		}
-		items = append(items, eval.MakeItem(t.Ticker, out, t.Expected, ev))
-	}
-	report := ev.BuildReport(items)
-	return writeJSON(report)
 }
 
 func healthcheck(cfg config.Config, ctx context.Context) error {
@@ -299,10 +304,4 @@ func probe(ctx context.Context, client *http.Client, url string) error {
 		return fmt.Errorf("status %s", resp.Status)
 	}
 	return nil
-}
-
-func writeJSON(v any) error {
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(v)
 }
