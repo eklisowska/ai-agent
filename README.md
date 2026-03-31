@@ -2,8 +2,8 @@
 
 This is a **Go backend API** that demonstrates an **agentic stock analyst** on synthetic data. Given a ticker that exists in the indexed dataset (the bundled data covers `**AAPL`**, `**AMZN`**, and `**NVDA**` only), it returns `BUY`, `HOLD`, or `SELL` using:
 
-- Retrieval-augmented context from synthetic financial, news, and profile data
-- Lightweight tool-calling for sentiment, risk, and valuation signals
+- Retrieval-augmented context from financial, news, and profile data
+- Tool-calling for sentiment, risk, and valuation signals
 - A reflection pass that can revise the first answer
 
 ## How it is built
@@ -91,9 +91,10 @@ curl -s -X POST http://localhost:8080/index
 ```
 
 1. Call the API:
-  - `**POST /analyze**` — default recommendation; JSON body: `{ "ticker": "AAPL" }` (use a ticker present in `data/raw/`).
-  - `**POST /ask**` — question-driven analysis; JSON body: `{ "ticker": "AAPL", "question": "…" }`.
-   Example — `/analyze`:
+
+- `POST /analyze` — default recommendation; JSON body: `{ "ticker": "AAPL" }` (use a ticker present in `data/raw/`).
+- `POST /ask` — question-driven analysis; JSON body: `{ "ticker": "AAPL", "question": "…" }`.
+ Example — `/analyze`:
 
 ```bash
 curl -s -X POST http://localhost:8080/analyze \
@@ -126,18 +127,6 @@ curl -s -X POST http://localhost:8080/ask \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AMZN","question":"Give a conservative recommendation focused on risk control."}'
 ```
-
-**Readiness:** `GET /ready` reports dependency checks (Qdrant + Ollama) for orchestration and load balancers.
-
-## Local run (without Docker)
-
-With Qdrant and Ollama running locally and env vars set (or defaults), from the repo root:
-
-```bash
-go run ./cmd/server
-```
-
-Then `POST /index` and use `/analyze` or `/ask` as above.
 
 ## Requirements coverage (agentic components)
 
