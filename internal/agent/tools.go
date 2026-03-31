@@ -77,9 +77,15 @@ func SentimentScore(newsDocs []string) float64 {
 func DetectRisk(text string) []string {
 	keywords := []string{"regulation", "declining demand", "competition", "debt", "litigation", "margin pressure"}
 	low := strings.ToLower(text)
+	// Avoid matching "debt" inside the financial metric phrase "debt-to-equity".
+	lowForDebt := strings.ReplaceAll(strings.ReplaceAll(low, "debt-to-equity", ""), "debt to equity", "")
 	var risks []string
 	for _, k := range keywords {
-		if strings.Contains(low, k) {
+		src := low
+		if k == "debt" {
+			src = lowForDebt
+		}
+		if strings.Contains(src, k) {
 			risks = append(risks, k)
 		}
 	}
@@ -129,11 +135,19 @@ func RunToolSummary(retrievedDocs []string) ToolSummary {
 	case "undervalued":
 		composite += 0.5
 	case "overvalued":
-		composite -= 0.4
+		// High revenue growth partially offsets a rich multiple (growth names).
+		if revenueGrowth >= 10 {
+			composite -= 0.22
+		} else {
+			composite -= 0.4
+		}
 	}
 	switch {
 	case revenueGrowth >= 15:
 		composite += 0.8
+	case revenueGrowth >= 10:
+		// Strong double-digit growth (e.g. AMZN) should compete with rich multiples.
+		composite += 0.63
 	case revenueGrowth >= 8:
 		composite += 0.4
 	case revenueGrowth < 0:

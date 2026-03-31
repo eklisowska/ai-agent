@@ -160,8 +160,9 @@ Return ONLY valid JSON:
 }
 
 func applyPolicyGuardrail(in model.AnalysisOutput, tools ToolSummary) (model.AnalysisOutput, bool) {
-	const strongBuy = 1.0
-	const strongSell = -1.0
+	// Must match thresholds in buildReasoningPrompt (composite_score policy).
+	const strongBuy = 0.7
+	const strongSell = -0.7
 	switch {
 	case tools.CompositeScore >= strongBuy && in.Decision != model.DecisionBuy:
 		in.Decision = model.DecisionBuy

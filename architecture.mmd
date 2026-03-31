@@ -1,51 +1,29 @@
+%% ReAct: Retrieve → Act → Reason → Reflect (see agentic_workflow_react.md).
+%% Requirements 1–4: README “Requirements Coverage (Agentic Components)” — data prep, RAG, reasoning & reflection, tools.
 flowchart TD
-    U[User / Reviewer]
-    API[Go API Server<br/>chi router<br/>cmd/server]
-    IDX[/POST /index/]
-    ANL[/POST /analyze or /ask/]
-    EVL[/POST /eval/]
+    U[User / reviewer]
+    API[Go API]
 
-    RAW[(data/raw/*.json<br/>profiles, financials, news, ground_truth)]
-    PREP[Data preparation<br/>Fact normalization]
-    EMB[Embedding model<br/>Ollama: nomic-embed-text]
-    VDB[(Qdrant vector store)]
-    RET[RAG retrieval<br/>ticker filter + top-k]
-    TOOLS[Tool-calling layer<br/>sentiment, risk, PE]
-    REASON[Reasoning prompt<br/>Ollama: llama3]
-    REFL[Reflection prompt<br/>self-check/revise]
-    OUT["Final decision<br>BUY | HOLD | SELL"]
-    METRICS[Evaluation report<br/>accuracy, reasoning quality,<br/>confidence calibration]
-
-    U --> API
-    API --> IDX
-    API --> ANL
-    API --> EVL
-
-    IDX --> RAW --> PREP --> EMB --> VDB
-
-    ANL --> RET
-    RET --> EMB
-    RET --> VDB
-    RET --> TOOLS
-    TOOLS --> REASON --> REFL --> OUT
-
-    EVL --> RET
-    EVL --> RAW
-    EVL --> METRICS
-
-    subgraph Technologies
-      T1[Go 1.26]
-      T2[chi v5]
-      T3[Ollama]
-      T4[Qdrant]
-      T5[Docker Compose]
-      T6[Testify]
+    subgraph idx["1–2 · Prep & RAG index — POST /index"]
+        RAW[(Synthetic JSON)]
+        PREP[Fact documents]
+        Q[(Qdrant)]
+        RAW --> PREP --> Q
     end
 
-    API -.built with.-> T1
-    API -.router.-> T2
-    EMB -.served by.-> T3
-    REASON -.served by.-> T3
-    VDB -.engine.-> T4
-    API -.run via.-> T5
-    METRICS -.tests via.-> T6
+    subgraph react["ReAct — POST /analyze · /ask"]
+        RET[Retrieve]
+        ACT[Act — tools]
+        REASON[Reason]
+        REFLECT[Reflect]
+        RET --> ACT --> REASON --> REFLECT
+    end
+
+    OUT[RunResult JSON]
+
+    U --> API
+    API -->|POST /index| PREP
+    Q --> RET
+    REFLECT --> OUT
+
+    API -->|POST /analyze /ask| RET
